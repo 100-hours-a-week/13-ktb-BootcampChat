@@ -1,54 +1,42 @@
-name: Build & Upload Frontend to S3 (Static + SSR)
+name: Build & Upload Frontend & Backend to S3
 
 on:
   push:
-    branches: [main]
+    branches: [test]
 
 jobs:
   build-and-upload:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.18.0
 
-    - name: Install dependencies
-      working-directory: frontend
-      run: npm install
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-2
 
-    - name: Build frontend
-      working-directory: frontend
-      run: npm run build
+      - name: Install frontend dependencies
+        run: npm install --prefix frontend --legacy-peer-deps
 
-    # 정적 파일 S3로 업로드 (CDN 용)
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ secrets.AWS_REGION }}
+      - name: Build frontend for SSR
+        run: npm run build --prefix frontend
 
-    - name: Upload static files to S3 (for CDN)
-      run: |
-        aws s3 sync frontend/.next/static s3://ktb13-static/static --delete
-        aws s3 sync frontend/public s3://ktb13-static/public --delete
+      - name: Upload frontend static files to S3
+        run: aws s3 sync frontend/.next/static s3://ktb13-bucket/static/
 
-    # SSR 용 전체 빌드 zip
-    - name: Prepare SSR bundle
-      run: |
-        mkdir ssr-dist
-        cp -r frontend/.next ssr-dist/.next
-        cp -r frontend/node_modules ssr-dist/node_modules || echo "node_modules missing (optional)"
-        cp frontend/next.config.js ssr-dist/
-        cp frontend/package.json ssr-dist/
-        cp frontend/package-lock.json ssr-dist/ || true
-        cd ssr-dist && zip -r frontend-ssr.zip .
+      - name: Upload frontend SSR files to S3
+        run: aws s3 cp frontend/.next/server s3://ktb13-bucket/frontend/ --recursive
 
-    - name: Upload SSR bundle to S3
-      run: |
-        aws s3 cp ssr-dist/frontend-ssr.zip s3://ktb13-bundle/frontend-ssr.zip
+      - name: Upload backend source files to S3
+        run: |
+          aws s3 cp backend/ s3://ktb13-bucket/backend/ --recursive \
+            --exclude "node_modules/*"
