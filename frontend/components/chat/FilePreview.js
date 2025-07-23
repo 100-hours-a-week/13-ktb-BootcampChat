@@ -5,7 +5,7 @@ import {
   ImageIcon, 
   PdfIcon as FileText, 
   MovieIcon as Film, 
-  LoadingOutlineIcon as Loader,
+  ReloadOutlineIcon as Loader,
   SoundOnIcon as Music,
   FileIcon as File
 } from '@vapor-ui/icons';
