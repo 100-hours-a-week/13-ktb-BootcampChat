@@ -4,9 +4,9 @@ const User = require('../models/User');
 const File = require('../models/File');
 const jwt = require('jsonwebtoken');
 const { jwtSecret } = require('../config/keys');
-const redisClient = require('../utils/redisClient');
 const SessionService = require('../services/sessionService');
 const aiService = require('../services/aiService');
+const redisMessageService = require('../services/redisMessageService');
 
 module.exports = function(io) {
   const connectedUsers = new Map();
@@ -20,7 +20,7 @@ module.exports = function(io) {
   const MESSAGE_LOAD_TIMEOUT = 10000; // 메시지 로드 타임아웃 (10초)
   const RETRY_DELAY = 2000; // 재시도 간격 (2초)
   const DUPLICATE_LOGIN_TIMEOUT = 10000; // 중복 로그인 타임아웃 (10초)
-
+  
   // 로깅 유틸리티 함수
   const logDebug = (action, data) => {
     console.debug(`[Socket.IO] ${action}:`, {
@@ -395,8 +395,28 @@ module.exports = function(io) {
         await joinMessage.save();
 
         // 초기 메시지 로드
-        const messageLoadResult = await loadMessages(socket, roomId);
-        const { messages, hasMore, oldestTimestamp } = messageLoadResult;
+        let messages, hasMore, oldestTimestamp;
+
+        // Redis 캐시에서 메시지 조회 시도
+        const cachedMessages = await redisMessageService.getCachedMessages(roomId);
+
+        if (cachedMessages && cachedMessages.length > 0) {
+          messages = cachedMessages;
+          hasMore = redisMessageService.isCacheFull(cachedMessages);
+        } else {
+          // Redis에 없으면 DB 조회 후 캐싱
+          const result = await loadMessages(socket, roomId);
+          messages = result.messages;
+          hasMore = result.hasMore;
+          oldestTimestamp = result.oldestTimestamp;
+
+          logDebug('redis cache miss - db load', {
+            roomId,
+            dbCount: messages.length
+          });
+
+          await redisMessageService.ensureRedisWarmup(roomId);
+        }
 
         // 활성 스트리밍 메시지 조회
         const activeStreams = Array.from(streamingSessions.values())
@@ -544,6 +564,9 @@ module.exports = function(io) {
           { path: 'sender', select: 'name email profileImage' },
           { path: 'file', select: 'filename originalname mimetype size' }
         ]);
+
+        // Redis에 캐시 반영
+        await redisMessageService.saveMessageToRedis(room, message.toObject());
 
         io.to(room).emit('message', message);
 

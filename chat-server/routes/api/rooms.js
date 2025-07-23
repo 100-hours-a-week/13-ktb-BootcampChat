@@ -4,6 +4,7 @@ const auth = require('../../middleware/auth');
 const Room = require('../../models/Room');
 const User = require('../../models/User');
 const { rateLimit } = require('express-rate-limit');
+const redisMessageService = require('../../services/redisMessageService');
 let io;
 
 // 속도 제한 설정
@@ -288,8 +289,11 @@ router.post('/:roomId/join', auth, async (req, res) => {
     if (!room.participants.includes(req.user.id)) {
       room.participants.push(req.user.id);
       await room.save();
-    }
 
+      // ✅ Redis warm-up (최신 메시지 캐싱)
+      await redisMessageService.ensureRedisWarmup(room._id.toString());
+
+    }
     const populatedRoom = await room.populate('participants', 'name email');
 
     // Socket.IO를 통해 참여자 업데이트 알림
