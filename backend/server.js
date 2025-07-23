@@ -7,6 +7,7 @@ const socketIO = require('socket.io');
 const path = require('path');
 const { router: roomsRouter, initializeSocket } = require('./routes/api/rooms');
 const routes = require('./routes');
+const statusRouter = require('./routes/api/status');
 
 const app = express();
 const server = http.createServer(app);
@@ -69,6 +70,9 @@ app.get('/health', (req, res) => {
     env: process.env.NODE_ENV
   });
 });
+
+// 상태 확인용 라우트
+app.use('/api/status', statusRouter);
 
 // API 라우트 마운트
 app.use('/api', routes);
