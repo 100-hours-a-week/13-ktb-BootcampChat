@@ -2,7 +2,7 @@ name: Build & Upload Frontend & Backend to S3
 
 on:
   push:
-    branches: [test]
+    branches: [main]
 
 jobs:
   build-and-upload:
