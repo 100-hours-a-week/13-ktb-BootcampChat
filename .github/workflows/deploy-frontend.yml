@@ -1,4 +1,4 @@
-name: Build & Upload Frontend to S3
+name: Build & Upload Frontend to S3 (Static + SSR)
 
 on:
   push:
@@ -25,9 +25,7 @@ jobs:
       working-directory: frontend
       run: npm run build
 
-    - name: Zip build output
-      run: zip -r frontend.zip frontend -x "**/.git*" "**/.next/cache/**"
-
+    # 정적 파일 S3로 업로드 (CDN 용)
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v2
       with:
@@ -35,5 +33,22 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ secrets.AWS_REGION }}
 
-    - name: Upload to S3
-      run: aws s3 cp frontend.zip s3://ktb13-bucket/roles/frontend.zip
+    - name: Upload static files to S3 (for CDN)
+      run: |
+        aws s3 sync frontend/.next/static s3://ktb13-static/static --delete
+        aws s3 sync frontend/public s3://ktb13-static/public --delete
+
+    # SSR 용 전체 빌드 zip
+    - name: Prepare SSR bundle
+      run: |
+        mkdir ssr-dist
+        cp -r frontend/.next ssr-dist/.next
+        cp -r frontend/node_modules ssr-dist/node_modules || echo "node_modules missing (optional)"
+        cp frontend/next.config.js ssr-dist/
+        cp frontend/package.json ssr-dist/
+        cp frontend/package-lock.json ssr-dist/ || true
+        cd ssr-dist && zip -r frontend-ssr.zip .
+
+    - name: Upload SSR bundle to S3
+      run: |
+        aws s3 cp ssr-dist/frontend-ssr.zip s3://ktb13-bundle/frontend-ssr.zip
