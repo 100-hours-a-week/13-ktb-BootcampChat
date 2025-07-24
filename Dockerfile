@@ -3,8 +3,9 @@ FROM node:18
 WORKDIR /app
 COPY . .
 
-# 공통 환경변수
 ENV NODE_ENV=production
+
+RUN npm install
 
 # backend
 WORKDIR /app/backend
@@ -18,9 +19,7 @@ RUN npm install --legacy-peer-deps && npm run build
 WORKDIR /app/chat-server
 RUN npm install
 
-# start.sh 복사
+# 루트로 다시 이동
 WORKDIR /app
-COPY start.sh .
-RUN chmod +x start.sh
 
-CMD ["./start.sh"]
+CMD ["npm", "run", "dev"]
