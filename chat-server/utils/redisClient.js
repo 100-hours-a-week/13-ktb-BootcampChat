@@ -22,12 +22,12 @@ class MockRedisClient {
   async get(key) {
     const item = this.store.get(key);
     if (!item) return null;
-    
+
     if (item.expires && Date.now() > item.expires) {
       this.store.delete(key);
       return null;
     }
-    
+
     try {
       return JSON.parse(item.value);
     } catch {
@@ -243,6 +243,13 @@ class RedisClient {
         console.error('Redis quit error:', error);
       }
     }
+  }
+
+  async multi() {
+    if (!this.isConnected) {
+      await this.connect();
+    }
+    return this.client.multi(); // 실제 redis client에서 multi 반환
   }
 }
 

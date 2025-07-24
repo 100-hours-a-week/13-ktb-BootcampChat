@@ -11,7 +11,7 @@ const saveMessageToRedis = async (roomId, messageObj) => {
   const key = getMessageKey(roomId);
   await redisClient.connect();
 
-  const pipeline = redisClient.client.multi();
+  const pipeline = await redisClient.multi();
   pipeline.lPush(key, JSON.stringify(messageObj));
   pipeline.lTrim(key, 0, REDIS_MESSAGE_LIMIT - 1);
   pipeline.expire(key, REDIS_TTL_SECONDS);
@@ -45,7 +45,7 @@ const incrementCacheMiss = async () => {
 
 const getCacheStats = async () => {
   await redisClient.connect(); // 연결 보장
-  
+
   const [hit, miss] = await redisClient.client.mGet([
     'chat:cache:hit',
     'chat:cache:miss'
@@ -67,7 +67,7 @@ const ensureRedisWarmup = async (roomId) => {
 
   await redisClient.connect(); // 연결 보장
 
-  const exists = await redisClient.client.exists(key);
+  const exists = await redisClient.exists(key);
   if (!exists) {
     const messages = await Message.find({ room: roomId })
       .sort({ timestamp: -1 })
@@ -75,7 +75,7 @@ const ensureRedisWarmup = async (roomId) => {
       .lean();
 
     for (const msg of messages.reverse()) {
-      await redisClient.client.rPush(key, JSON.stringify(msg));
+      await redisClient.rPush(key, JSON.stringify(msg));
     }
     await redisClient.expire(key, REDIS_TTL_SECONDS);
   }
