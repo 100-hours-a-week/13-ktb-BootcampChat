@@ -37,6 +37,7 @@ jobs:
       - name: Create frontend .env.local
         env:
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_SOCKET_URL : ${{ secrets.NEXT_PUBLIC_SOCKET_URL }}
           NEXT_PUBLIC_ENCRYPTION_KEY: ${{ secrets.NEXT_PUBLIC_ENCRYPTION_KEY }}
           NEXT_PUBLIC_PASSWORD_SALT: ${{ secrets.NEXT_PUBLIC_PASSWORD_SALT }}
         run: |
