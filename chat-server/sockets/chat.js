@@ -535,7 +535,11 @@ module.exports = function(io) {
                 fileType: file.mimetype,
                 fileSize: file.size,
                 originalName: file.originalname
-              }
+              },
+              readers: [{
+                userId: socket.user.id,
+                readAt: new Date()
+              }]
             });
             break;
 
@@ -551,7 +555,11 @@ module.exports = function(io) {
               content: messageContent,
               type: 'text',
               timestamp: new Date(),
-              reactions: {}
+              reactions: {},
+              readers: [{
+                userId: socket.user.id,
+                readAt: new Date()
+              }]
             });
             break;
 
