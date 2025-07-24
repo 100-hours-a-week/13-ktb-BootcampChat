@@ -18,12 +18,10 @@
     "start:chat-server": "cd chat-server && npm start",
     "test": "cd e2e && npm test"
   },
-  "devDependencies": {
-    "concurrently": "^8.2.2"
-  },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@vapor-ui/core": "^0.3.1"
+    "@vapor-ui/core": "^0.3.1",
+    "concurrently": "^8.2.2"
   }
 }
