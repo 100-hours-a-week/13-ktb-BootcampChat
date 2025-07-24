@@ -1,42 +1,81 @@
-name: Build & Upload Frontend & Backend to S3
+name: Build and Push Docker Image
 
 on:
   push:
-    branches: [main]
+    branches: [test]
 
 jobs:
-  build-and-upload:
+  build-and-push:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout source
         uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18.18.0
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-northeast-2
-
-      - name: Install frontend dependencies
-        run: npm install --prefix frontend --legacy-peer-deps
-
-      - name: Build frontend for SSR
-        run: npm run build --prefix frontend
-
-      - name: Upload frontend static files to S3
-        run: aws s3 sync frontend/.next/static s3://ktb13-bucket/static/
-
-      - name: Upload frontend SSR files to S3
-        run: aws s3 cp frontend/.next/server s3://ktb13-bucket/frontend/ --recursive
-
-      - name: Upload backend source files to S3
+      - name: Create backend .env
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          REDIS_HOST: ${{ secrets.REDIS_HOST }}
+          REDIS_PORT: ${{ secrets.REDIS_PORT }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+          PASSWORD_SALT: ${{ secrets.PASSWORD_SALT }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
         run: |
-          aws s3 cp backend/ s3://ktb13-bucket/backend/ --recursive \
-            --exclude "node_modules/*"
+          cat <<EOF > backend/.env
+          MONGO_URI=$MONGO_URI
+          JWT_SECRET=$JWT_SECRET
+          REDIS_HOST=$REDIS_HOST
+          REDIS_PORT=$REDIS_PORT
+          OPENAI_API_KEY=$OPENAI_API_KEY
+          ENCRYPTION_KEY=$ENCRYPTION_KEY
+          PASSWORD_SALT=$PASSWORD_SALT
+          NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+          EOF
+
+      - name: Create frontend .env.local
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_ENCRYPTION_KEY: ${{ secrets.NEXT_PUBLIC_ENCRYPTION_KEY }}
+          NEXT_PUBLIC_PASSWORD_SALT: ${{ secrets.NEXT_PUBLIC_PASSWORD_SALT }}
+        run: |
+          cat <<EOF > frontend/.env.local
+          NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+          NEXT_PUBLIC_ENCRYPTION_KEY=$NEXT_PUBLIC_ENCRYPTION_KEY
+          NEXT_PUBLIC_PASSWORD_SALT=$NEXT_PUBLIC_PASSWORD_SALT
+          EOF
+
+      - name: Create chat-server .env
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          REDIS_HOST: ${{ secrets.REDIS_HOST }}
+          REDIS_PORT: ${{ secrets.REDIS_PORT }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+          PASSWORD_SALT: ${{ secrets.PASSWORD_SALT }}
+        run: |
+          cat <<EOF > chat-server/.env
+          MONGO_URI=$MONGO_URI
+          JWT_SECRET=$JWT_SECRET
+          REDIS_HOST=$REDIS_HOST
+          REDIS_PORT=$REDIS_PORT
+          OPENAI_API_KEY=$OPENAI_API_KEY
+          ENCRYPTION_KEY=$ENCRYPTION_KEY
+          PASSWORD_SALT=$PASSWORD_SALT
+          EOF
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build Docker image
+        run: |
+          docker build -t gmltn9233/ktb13-chat:latest .
+
+      - name: Push Docker image
+        run: |
+          docker push gmltn9233/ktb13-chat:latest
