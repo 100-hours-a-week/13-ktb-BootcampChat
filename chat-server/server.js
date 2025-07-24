@@ -19,6 +19,7 @@ app.set('trust proxy', 1);
 // CORS 설정
 const corsOptions = {
   origin: [
+    'http://43.202.61.232:3000',
     'https://bootcampchat-fe.run.goorm.site',
     'https://bootcampchat-hgxbv.dev-k8s.arkain.io',
     'http://localhost:3000',
@@ -33,9 +34,9 @@ const corsOptions = {
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: [
-    'Content-Type', 
-    'Authorization', 
-    'x-auth-token', 
+    'Content-Type',
+    'Authorization',
+    'x-auth-token',
     'x-session-id',
     'Cache-Control',
     'Pragma'
@@ -64,8 +65,8 @@ if (process.env.NODE_ENV === 'development') {
 
 // 기본 상태 체크
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
+  res.json({
+    status: 'ok',
     timestamp: new Date().toISOString(),
     env: process.env.NODE_ENV
   });
