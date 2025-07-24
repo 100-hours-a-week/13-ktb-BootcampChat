@@ -3,6 +3,8 @@ FROM node:18
 WORKDIR /app
 COPY . .
 
+ENV NODE_ENV=development
+
 # backend
 WORKDIR /app/backend
 RUN npm install
