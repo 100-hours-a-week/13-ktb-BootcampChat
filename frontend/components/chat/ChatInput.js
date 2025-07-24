@@ -342,8 +342,9 @@ const ChatInput = forwardRef(({
         default:
           return;
       }
-    } else if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-      e.preventDefault();
+    } else if (e.key === 'Enter' && !e.shiftKey) {
+      if (e.nativeEvent.isComposing) return
+        e.preventDefault();
       if (message.trim() || files.length > 0) {
         handleSubmit(e);
       }
@@ -366,63 +367,70 @@ const ChatInput = forwardRef(({
   ]);
 
   const handleMarkdownAction = useCallback((markdown) => {
-    if (!messageInputRef?.current) return;
+  if (!messageInputRef?.current) return;
 
-    const input = messageInputRef.current;
-    const start = input.selectionStart;
-    const end = input.selectionEnd;
-    const selectedText = message.substring(start, end);
-    let newText;
-    let newCursorPos;
-    let newSelectionStart;
-    let newSelectionEnd;
+  const input = messageInputRef.current;
+  const start = input.selectionStart;
+  const end = input.selectionEnd;
+  const selectedText = message.substring(start, end);
+  let newText;
+  let newCursorPos;
+  let newSelectionStart;
+  let newSelectionEnd;
 
-    if (markdown.includes('\n')) {
-      newText = message.substring(0, start) +
-                markdown.replace('\n\n', '\n' + selectedText + '\n') +
-                message.substring(end);
-      if (selectedText) {
-        newSelectionStart = start + markdown.split('\n')[0].length + 1;
-        newSelectionEnd = newSelectionStart + selectedText.length;
-        newCursorPos = newSelectionEnd;
-      } else {
-        newCursorPos = start + markdown.indexOf('\n') + 1;
-        newSelectionStart = newCursorPos;
-        newSelectionEnd = newCursorPos;
-      }
-    } else if (markdown.endsWith(' ')) {
-      newText = message.substring(0, start) +
-                markdown + selectedText +
-                message.substring(end);
-      newCursorPos = start + markdown.length + selectedText.length;
+  if (markdown === '[](url)') {
+    newText = message.substring(0, start) + '[](url)' + message.substring(end);
+    newSelectionStart = start + 1; 
+    newSelectionEnd = newSelectionStart;
+    newCursorPos = newSelectionStart;
+
+  } else if (markdown.includes('\n')) {
+    newText = message.substring(0, start) +
+              markdown.replace('\n\n', '\n' + selectedText + '\n') +
+              message.substring(end);
+    if (selectedText) {
+      newSelectionStart = start + markdown.split('\n')[0].length + 1;
+      newSelectionEnd = newSelectionStart + selectedText.length;
+      newCursorPos = newSelectionEnd;
+    } else {
+      newCursorPos = start + markdown.indexOf('\n') + 1;
       newSelectionStart = newCursorPos;
       newSelectionEnd = newCursorPos;
-    } else {
-      newText = message.substring(0, start) +
-                markdown + selectedText + markdown +
-                message.substring(end);
-      if (selectedText) {
-        newSelectionStart = start + markdown.length;
-        newSelectionEnd = newSelectionStart + selectedText.length;
-      } else {
-        newSelectionStart = start + markdown.length;
-        newSelectionEnd = newSelectionStart;
-      }
-      newCursorPos = newSelectionEnd;
     }
+  } else if (markdown.endsWith(' ')) {
+    newText = message.substring(0, start) +
+              markdown + selectedText +
+              message.substring(end);
+    newCursorPos = start + markdown.length + selectedText.length;
+    newSelectionStart = newCursorPos;
+    newSelectionEnd = newCursorPos;
+  } else {
+    newText = message.substring(0, start) +
+              markdown + selectedText + markdown +
+              message.substring(end);
+    if (selectedText) {
+      newSelectionStart = start + markdown.length;
+      newSelectionEnd = newSelectionStart + selectedText.length;
+    } else {
+      newSelectionStart = start + markdown.length;
+      newSelectionEnd = newSelectionStart;
+    }
+    newCursorPos = newSelectionEnd;
+  }
 
-    setMessage(newText);
+  setMessage(newText);
 
-    setTimeout(() => {
-      if (messageInputRef.current) {
-        input.focus();
-        input.setSelectionRange(newSelectionStart, newSelectionEnd);
-        if (selectedText) {
-          input.setSelectionRange(newCursorPos, newCursorPos);
-        }
+  setTimeout(() => {
+    if (messageInputRef.current) {
+      input.focus();
+      input.setSelectionRange(newSelectionStart, newSelectionEnd);
+      if (selectedText) {
+        input.setSelectionRange(newCursorPos, newCursorPos);
       }
-    }, 0);
-  }, [message, setMessage, messageInputRef]);
+    }
+  }, 0);
+}, [message, setMessage, messageInputRef]);
+
 
   const handleEmojiSelect = useCallback((emoji) => {
     if (!messageInputRef?.current) return;
