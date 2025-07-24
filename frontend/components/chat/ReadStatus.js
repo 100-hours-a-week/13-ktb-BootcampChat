@@ -22,13 +22,14 @@ const ReadStatus = ({
   const unreadParticipants = useMemo(() => {
     if (messageType === 'system') return [];
     
-    return participants.filter(participant => 
-      !currentReaders.some(reader => 
-        reader.userId === participant._id || 
-        reader.userId === participant.id
-      )
-    );
-  }, [participants, currentReaders, messageType]);
+    return participants.filter(participant => {
+          const userId = participant._id || participant.id;
+          const isNotReader = !currentReaders.some(reader => reader.userId === userId);
+          const isNotSelf = userId !== currentUserId; 
+
+          return isNotReader && isNotSelf;
+        });
+    }, [participants, currentReaders, currentUserId, messageType]);
 
   // 읽지 않은 참여자 수 계산
   const unreadCount = useMemo(() => {
