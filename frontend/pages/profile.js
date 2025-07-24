@@ -117,35 +117,44 @@ const Profile = () => {
       return;
     }
 
+    if (
+      formData.name.trim() === currentUser.name.trim() && 
+      !formData.currentPassword && 
+      !formData.newPassword
+    ) {
+      setError('변경할 이름이나 비밀번호를 입력해주세요.');
+      return;
+    }
+
+    const payload = {};
+    if (formData.name.trim() !== currentUser.name.trim()) {
+      payload.name = formData.name.trim();
+    }
+    if (formData.currentPassword && formData.newPassword) {
+      payload.currentPassword = formData.currentPassword;
+      payload.newPassword = formData.newPassword;
+    }
+
+    if (Object.keys(payload).length === 0) {
+      setError('변경할 내용이 없습니다.');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // 비밀번호 변경 처리
-      if (formData.currentPassword) {
-        if (!formData.newPassword) {
-          throw new Error('새 비밀번호를 입력해주세요.');
-        }
-        await authService.changePassword(formData.currentPassword, formData.newPassword);
-      }
+      const updatedUser = await authService.updateProfile(payload);
 
-      // 이름 변경 처리
-      if (formData.name !== currentUser.name) {
-        const updatedUser = await authService.updateProfile({ name: formData.name });
-        setCurrentUser(updatedUser);
-      }
-
-      // 성공 메시지 설정
+      setCurrentUser(updatedUser);
       setSuccess('프로필이 성공적으로 업데이트되었습니다.');
 
-      // 비밀번호 필드 초기화
-      setFormData(prev => ({ 
-        ...prev, 
-        currentPassword: '', 
-        newPassword: '', 
-        confirmPassword: '' 
+      setFormData(prev => ({
+        ...prev,
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
       }));
 
-      // 전역 이벤트 발생
       window.dispatchEvent(new Event('userProfileUpdate'));
 
     } catch (err) {
@@ -155,6 +164,7 @@ const Profile = () => {
       setLoading(false);
     }
   };
+
 
   if (!currentUser) return null;
 

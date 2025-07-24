@@ -129,12 +129,12 @@ exports.getProfile = async (req, res) => {
 // 프로필 업데이트
 exports.updateProfile = async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, currentPassword, newPassword } = req.body;
 
-    if (!name || name.trim().length === 0) {
+    if (!name && !currentPassword && !newPassword) {
       return res.status(400).json({
         success: false,
-        message: '이름을 입력해주세요.'
+        message: '수정할 이름 또는 비밀번호를 입력해주세요.'
       });
     }
 
@@ -146,7 +146,51 @@ exports.updateProfile = async (req, res) => {
       });
     }
 
-    user.name = name.trim();
+    // 이름 변경
+    if (typeof name === 'string') {
+      if (!name.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: '이름을 입력해주세요.'
+        });
+      }
+      if (name.trim().length < 2) {
+        return res.status(400).json({
+          success: false,
+          message: '이름은 2자 이상이어야 합니다.'
+        });
+      }
+      user.name = name.trim();
+    }
+
+    // 비밀번호 변경
+    if (currentPassword || newPassword) {
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({
+          success: false,
+          message: '비밀번호를 변경하려면 현재 비밀번호와 새 비밀번호를 모두 입력해야 합니다.'
+        });
+      }
+      if (newPassword.length < 6) {
+        return res.status(400).json({
+          success: false,
+          message: '새 비밀번호는 6자 이상이어야 합니다.'
+        });
+      }
+
+      const isMatch = await user.matchPassword(currentPassword);
+      if (!isMatch) {
+        return res.status(401).json({
+          success: false,
+          code: 'INVALID_CURRENT_PASSWORD',
+          message: '현재 비밀번호가 올바르지 않습니다.'
+        });
+      }
+
+      // 평문 저장 (암호화 생략)
+      user.password = newPassword;
+    }
+
     await user.save();
 
     res.json({
@@ -168,6 +212,7 @@ exports.updateProfile = async (req, res) => {
     });
   }
 };
+
 
 // 프로필 이미지 업로드
 exports.uploadProfileImage = async (req, res) => {
