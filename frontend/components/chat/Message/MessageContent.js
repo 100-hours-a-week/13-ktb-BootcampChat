@@ -35,49 +35,30 @@ const MessageContent = ({ content, isAI = false }) => {
 
   // 멘션 패턴을 찾아서 React 엘리먼트로 변환하는 함수
   const renderContentWithMentions = useMemo(() => (text) => {
-    const mentionPattern = /@(wayneAI|consultingAI|[\w.-]+)/g;
-    const parts = [];
-    let lastIndex = 0;
-    let match;
+    const parts = text.split(/(\s+)/).map((part, index) => {
+      if (part.startsWith('@')) {
+        const mentionedName = part.slice(1);
+        const isAIMention = mentionedName === 'wayneAI' || mentionedName === 'consultingAI';
+        const displayName = isAIMention 
+          ? (mentionedName === 'wayneAI' ? 'Wayne AI' : 'Consulting AI')
+          : mentionedName;
 
-    while ((match = mentionPattern.exec(text)) !== null) {
-      if (match.index > lastIndex) {
-        parts.push(
-          <span key={`text-${lastIndex}`}>
-            {text.slice(lastIndex, match.index)}
+        const mentionClass = isAIMention 
+          ? `mention mention-bot ${mentionedName === 'wayneAI' ? 'mention-wayne' : 'mention-consulting'}`
+          : 'mention mention-user';
+
+        return (
+          <span
+            key={`mention-${index}`}
+            className={mentionClass}
+          >
+            @{displayName}
           </span>
         );
       }
 
-      const mentionedName = match[1];
-      const isAIMention = mentionedName === 'wayneAI' || mentionedName === 'consultingAI';
-      const displayName = isAIMention 
-        ? (mentionedName === 'wayneAI' ? 'Wayne AI' : 'Consulting AI')
-        : mentionedName;
-
-      const mentionClass = isAIMention 
-        ? `mention mention-bot ${mentionedName === 'wayneAI' ? 'mention-wayne' : 'mention-consulting'}`
-        : 'mention mention-user';
-
-      parts.push(
-        <span
-          key={`mention-${match.index}`}
-          className={mentionClass}
-        >
-          @{displayName}
-        </span>
-      );
-
-      lastIndex = match.index + match[0].length;
-    }
-
-    if (lastIndex < text.length) {
-      parts.push(
-        <span key={`text-${lastIndex}`}>
-          {text.slice(lastIndex)}
-        </span>
-      );
-    }
+      return <span key={`text-${index}`}>{part}</span>;
+    });
 
     return parts;
   }, []);
