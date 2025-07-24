@@ -19,6 +19,8 @@ app.set('trust proxy', 1);
 // CORS 설정
 const corsOptions = {
   origin: [
+    'https://goorm-ktb-013.goorm.team',
+    'https://api.goorm-ktb-013.goorm.team',
     'https://chat.goorm-ktb-013.goorm.team',
     'https://bootcampchat-fe.run.goorm.site',
     'https://bootcampchat-hgxbv.dev-k8s.arkain.io',
