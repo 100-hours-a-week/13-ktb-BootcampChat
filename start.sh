@@ -1,9 +1,4 @@
 #!/bin/bash
 
 export NODE_ENV=production
-
-cd /app/backend && npm start &
-
-cd /app/chat-server && npm start &
-
-cd /app/frontend && npm start
+npm run dev
