@@ -304,7 +304,8 @@ function ChatRoomsComponent() {
 
       await attemptConnection();
 
-      const response = await axiosInstance.get('/api/rooms', {
+      const response = await axiosInstance.get('api/rooms', {
+        baseURL: process.env.NEXT_PUBLIC_SOCKET_URL,
         params: {
           page: isLoadingMore ? pageIndex : 0,
           pageSize,
@@ -377,7 +378,8 @@ function ChatRoomsComponent() {
       console.log('Loading page:', nextPage);
       setPageIndex(nextPage);
       
-      const response = await axiosInstance.get('/api/rooms', {
+      const response = await axiosInstance.get('api/rooms', {
+        baseURL: process.env.NEXT_PUBLIC_SOCKET_URL,
         params: {
           page: nextPage,
           pageSize,
@@ -582,7 +584,7 @@ function ChatRoomsComponent() {
 
     setJoiningRoom(true);
     try {
-      const response = await axiosInstance.post(`/api/rooms/${room._id}/join`, {}, { timeout: 5000 });
+      const response = await axiosInstance.post(`api/rooms/${room._id}/join`, {}, { baseURL: process.env.NEXT_PUBLIC_SOCKET_URL, timeout: 5000 });
       if (response.data.success) {
         router.push(`/chat?room=${room._id}`);
       }
@@ -668,7 +670,7 @@ function ChatRoomsComponent() {
       const response = await axiosInstance.post(
         `/api/rooms/${selectedRoom._id}/join`,
         { password },
-        { timeout: 5000 }
+        { baseURL: process.env.NEXT_PUBLIC_SOCKET_URL, timeout: 5000 }
       );
 
       if (response.data.success) {

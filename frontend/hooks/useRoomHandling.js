@@ -180,7 +180,7 @@ export const useRoomHandling = (
       }
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/rooms/${roomId}`,
+        `${process.env.NEXT_PUBLIC_SOCKET_URL}api/rooms/${roomId}`,
         {
           method: 'GET',
           headers: {
