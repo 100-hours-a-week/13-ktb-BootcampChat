@@ -184,8 +184,12 @@ axiosInstance.interceptors.response.use(
         break;
         
       case 401:
-        errorMessage = '인증이 필요하거나 만료되었습니다.';
-        shouldLogout = true;
+        if (errorData?.code === 'PASSWORD_INVALID') {
+          errorMessage = errorData?.message || '비밀번호가 일치하지 않습니다.';
+        } else {
+          errorMessage = '인증이 필요하거나 만료되었습니다.';
+          shouldLogout = true;
+        }
         break;
         
       case 403:
@@ -236,6 +240,9 @@ axiosInstance.interceptors.response.use(
 
     // 401 에러 처리
     if (status === 401) {
+      if (errorData?.code === 'PASSWORD_INVALID') {
+        throw error;
+      }
       try {
         const refreshed = await authService.refreshToken();
         if (refreshed) {

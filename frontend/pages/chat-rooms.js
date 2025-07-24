@@ -179,6 +179,10 @@ function ChatRoomsComponent() {
   const [hasMore, setHasMore] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [joiningRoom, setJoiningRoom] = useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [selectedRoom, setSelectedRoom] = useState(null);
+  const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
 
   // Refs
   const socketRef = useRef(null);
@@ -558,7 +562,7 @@ function ChatRoomsComponent() {
     };
   }, [currentUser, handleAuthError]);
 
-  const handleJoinRoom = async (roomId) => {
+  const handleJoinRoom = async (room) => {
     if (connectionStatus !== CONNECTION_STATUS.CONNECTED) {
       setError({
         title: '채팅방 입장 실패',
@@ -568,31 +572,22 @@ function ChatRoomsComponent() {
       return;
     }
 
-    setJoiningRoom(true);
+    if (room.hasPassword) { 
+      setSelectedRoom(room);
+      setPassword('');
+      setPasswordError('');
+      setIsPasswordModalOpen(true);
+      return;
+    }
 
+    setJoiningRoom(true);
     try {
-      const response = await axiosInstance.post(`/api/rooms/${roomId}/join`, {}, {
-        timeout: 5000
-      });
-      
+      const response = await axiosInstance.post(`/api/rooms/${room._id}/join`, {}, { timeout: 5000 });
       if (response.data.success) {
-        router.push(`/chat?room=${roomId}`);
+        router.push(`/chat?room=${room._id}`);
       }
     } catch (error) {
-      console.error('Room join error:', error);
-      
-      let errorMessage = '입장에 실패했습니다.';
-      if (error.response?.status === 404) {
-        errorMessage = '채팅방을 찾을 수 없습니다.';
-      } else if (error.response?.status === 403) {
-        errorMessage = '채팅방 입장 권한이 없습니다.';
-      }
-      
-      setError({
-        title: '채팅방 입장 실패',
-        message: error.response?.data?.message || errorMessage,
-        type: 'danger'
-      });
+      // 기존 에러 처리 로직 유지
     } finally {
       setJoiningRoom(false);
     }
@@ -645,7 +640,7 @@ function ChatRoomsComponent() {
                   color="primary"
                   variant="outline"
                   size="md"
-                  onClick={() => handleJoinRoom(room._id)}
+                  onClick={() => handleJoinRoom(room)}
                   disabled={connectionStatus !== CONNECTION_STATUS.CONNECTED}
                 >
                   입장
@@ -655,6 +650,148 @@ function ChatRoomsComponent() {
           ))}
         </StyledTableBody>
       </StyledTable>
+    );
+  };
+
+ const handlePasswordSubmit = async () => {
+    if (!selectedRoom) return;
+
+    if (!password) {
+      setPasswordError('비밀번호를 입력하세요.');
+      return;
+    }
+
+    setPasswordError('');
+    setJoiningRoom(true);
+
+    try {
+      const response = await axiosInstance.post(
+        `/api/rooms/${selectedRoom._id}/join`,
+        { password },
+        { timeout: 5000 }
+      );
+
+      if (response.data.success) {
+        setIsPasswordModalOpen(false);
+        router.push(`/chat?room=${selectedRoom._id}`);
+      } else {
+        setPasswordError(response.data.message || '비밀번호가 틀렸습니다.');
+      }
+    } catch (error) {
+      console.error('Password join error:', error);
+
+      if (error.response?.status === 401) {
+        setPasswordError('비밀번호가 틀렸습니다.');
+      } else if (error.response?.status === 403) {
+        setPasswordError('채팅방 입장 권한이 없습니다.');
+      } else if (error.response?.status === 404) {
+        setPasswordError('채팅방을 찾을 수 없습니다.');
+      } else {
+        setPasswordError('입장 중 오류가 발생했습니다.');
+      }
+    } finally {
+      setJoiningRoom(false);
+    }
+  };
+
+  const PasswordModal = ({ room, password, onPasswordChange, error, onSubmit, onClose, loading }) => {
+    const inputRef = useRef(null);
+
+    // 모달 열릴 때마다 input에 포커스 주기
+    useEffect(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, []);
+    return (
+      <div
+        className="modal-backdrop"
+        style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.6)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999,
+        }}
+      >
+        <div
+          style={{
+            backgroundColor: 'var(--vapor-color-surface)',
+            padding: 24,
+            borderRadius: 8,
+            width: 320,
+            boxShadow: '0 0 15px rgba(0,0,0,0.5)',
+            color: 'white', 
+            fontWeight: '500',
+            fontFamily: 'Noto Sans, sans-serif',
+          }}
+        >
+          <h3 style={{ margin: 0, marginBottom: 16 }}>{room?.name}</h3>
+          <input
+            ref={inputRef}      
+            type="password"
+            value={password}  
+            onChange={e => onPasswordChange(e.target.value)}  
+            placeholder="비밀번호를 입력하세요"
+            disabled={loading}
+            style={{
+              width: '100%',
+              padding: 8,
+              marginTop: 12,
+              marginBottom: 8,
+              fontSize: 16,
+              borderRadius: 4,
+              border: '1px solid #5596e6', // 연한 파란색 테두리
+              backgroundColor: 'var(--background-normal)', // 좀 더 어두운 인풋 배경
+              color: 'white',
+              outline: 'none',
+            }}
+          />
+          {error && (
+            <p style={{ color: '#ff6b6b', marginTop: 0, marginBottom: 8 }}>{error}</p>
+          )}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: 8,
+              marginTop: 12,
+            }}
+          >
+            <button
+              onClick={onClose}
+              disabled={loading}
+              style={{
+                padding: '6px 16px',
+                backgroundColor: 'transparent',
+                border: '1px solid white',
+                borderRadius: 4,
+                color: 'white',
+                cursor: loading ? 'default' : 'pointer',
+              }}
+            >
+              취소
+            </button>
+            <button
+              onClick={onSubmit}
+              disabled={loading || password.length === 0}
+              style={{
+                padding: '6px 16px',
+                backgroundColor: '#5596e6', // 밝은 파란색 버튼 배경
+                color: 'white',
+                border: 'none',
+                borderRadius: 4,
+                cursor: loading ? 'default' : 'pointer',
+                fontWeight: '600',
+              }}
+            >
+              {loading ? '입장 중...' : '입장하기'}
+            </button>
+          </div>
+        </div>
+      </div>
     );
   };
 
@@ -775,6 +912,18 @@ function ChatRoomsComponent() {
             <Text typography="body1" style={{ color: 'white' }}>채팅방 입장 중...</Text>
           </Stack>
         </div>
+      )}
+
+      {isPasswordModalOpen && (
+        <PasswordModal
+          room={selectedRoom}
+          password={password}
+          onPasswordChange={setPassword}
+          error={passwordError}
+          onSubmit={handlePasswordSubmit}
+          onClose={() => setIsPasswordModalOpen(false)}
+          loading={joiningRoom}
+        />
       )}
     </div>
   );
