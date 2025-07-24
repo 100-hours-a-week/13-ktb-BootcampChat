@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export NODE_ENV=development
+export NODE_ENV=production
 
 cd /app/backend && npm start &
 
