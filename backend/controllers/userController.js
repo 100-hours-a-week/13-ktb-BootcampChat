@@ -296,6 +296,42 @@ exports.uploadProfileImage = async (req, res) => {
   }
 };
 
+// 프로필 이미지 url 업데이트
+exports.updateProfileImageUrl = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { profileImage } = req.body;
+
+    if (!profileImage || typeof profileImage !== 'string' || profileImage.trim() === '') {
+      return res.status(400).json({ success: false, message: '프로필 이미지 URL이 필요합니다.' });
+    }
+
+    // URL 형식 간단 체크 (http 또는 https로 시작하는지)
+    const urlPattern = /^https?:\/\/.+/i;
+    if (!urlPattern.test(profileImage)) {
+      return res.status(400).json({ success: false, message: '유효한 이미지 URL이 아닙니다.' });
+    }
+
+    // 사용자 찾고 업데이트 (new: true는 업데이트 후 문서 반환)
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: '사용자를 찾을 수 없습니다.' });
+    }
+
+    user.profileImage = profileImage;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: '프로필 이미지가 업데이트되었습니다.',
+      user,
+    });
+  } catch (err) {
+    console.error('updateProfileImageUrl error:', err);
+    res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
+  }
+};
+
 // 프로필 이미지 삭제
 exports.deleteProfileImage = async (req, res) => {
   try {
