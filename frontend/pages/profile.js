@@ -68,44 +68,51 @@ const Profile = () => {
 
   const handleImageChange = useCallback(async (imageUrl) => {
     try {
-      // 이미지 URL 업데이트
-      const fullImageUrl = getProfileImageUrl(imageUrl);
-      setProfileImage(imageUrl);
+      setError('');
+      setSuccess('');
 
-      // 현재 사용자 정보 가져오기
+      // 1) 백엔드에 URL 저장 요청
       const user = authService.getCurrentUser();
       if (!user) throw new Error('사용자 정보를 찾을 수 없습니다.');
 
-      // 기존 상태 유지하면서 사용자 정보 업데이트
-      const updatedUser = {
-        ...user,
-        profileImage: imageUrl
-      };
-      
-      // localStorage 업데이트
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      setCurrentUser(updatedUser);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/profile-image-url`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-auth-token': user.token,
+          'x-session-id': user.sessionId,
+        },
+        body: JSON.stringify({ profileImage: imageUrl }),
+      });
 
-      // 성공 메시지 표시
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || '프로필 이미지 저장에 실패했습니다.');
+      }
+
+      const { user: updatedUserData } = await response.json();
+
+      // 2) 성공 시 로컬 업데이트
+      setProfileImage(imageUrl);
+      localStorage.setItem('user', JSON.stringify(updatedUserData));
+      setCurrentUser(updatedUserData);
+
       setSuccess('프로필 이미지가 업데이트되었습니다.');
-      
-      // 3초 후 성공 메시지 제거
+
+      // 3초 후 메시지 초기화
       setTimeout(() => {
         setSuccess('');
       }, 3000);
 
-      // 전역 이벤트 발생
       window.dispatchEvent(new Event('userProfileUpdate'));
 
     } catch (error) {
       console.error('Image update error:', error);
-      setError('프로필 이미지 업데이트에 실패했습니다.');
-      
-      setTimeout(() => {
-        setError('');
-      }, 3000);
+      setError(error.message || '프로필 이미지 업데이트에 실패했습니다.');
+      setTimeout(() => setError(''), 3000);
     }
-  }, [getProfileImageUrl]);
+  }, []);
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -117,35 +124,44 @@ const Profile = () => {
       return;
     }
 
+    if (
+      formData.name.trim() === currentUser.name.trim() && 
+      !formData.currentPassword && 
+      !formData.newPassword
+    ) {
+      setError('변경할 이름이나 비밀번호를 입력해주세요.');
+      return;
+    }
+
+    const payload = {};
+    if (formData.name.trim() !== currentUser.name.trim()) {
+      payload.name = formData.name.trim();
+    }
+    if (formData.currentPassword && formData.newPassword) {
+      payload.currentPassword = formData.currentPassword;
+      payload.newPassword = formData.newPassword;
+    }
+
+    if (Object.keys(payload).length === 0) {
+      setError('변경할 내용이 없습니다.');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // 비밀번호 변경 처리
-      if (formData.currentPassword) {
-        if (!formData.newPassword) {
-          throw new Error('새 비밀번호를 입력해주세요.');
-        }
-        await authService.changePassword(formData.currentPassword, formData.newPassword);
-      }
+      const updatedUser = await authService.updateProfile(payload);
 
-      // 이름 변경 처리
-      if (formData.name !== currentUser.name) {
-        const updatedUser = await authService.updateProfile({ name: formData.name });
-        setCurrentUser(updatedUser);
-      }
-
-      // 성공 메시지 설정
+      setCurrentUser(updatedUser);
       setSuccess('프로필이 성공적으로 업데이트되었습니다.');
 
-      // 비밀번호 필드 초기화
-      setFormData(prev => ({ 
-        ...prev, 
-        currentPassword: '', 
-        newPassword: '', 
-        confirmPassword: '' 
+      setFormData(prev => ({
+        ...prev,
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
       }));
 
-      // 전역 이벤트 발생
       window.dispatchEvent(new Event('userProfileUpdate'));
 
     } catch (err) {
@@ -155,6 +171,7 @@ const Profile = () => {
       setLoading(false);
     }
   };
+
 
   if (!currentUser) return null;
 

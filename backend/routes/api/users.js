@@ -28,6 +28,12 @@ router.post('/profile-image',
   userController.uploadProfileImage
 );
 
+// 프로필 이미지 url 업데이트
+router.patch('/profile-image-url',
+  auth,
+  userController.updateProfileImageUrl
+);
+
 // 프로필 이미지 삭제
 router.delete('/profile-image',
   auth,

@@ -129,12 +129,12 @@ exports.getProfile = async (req, res) => {
 // 프로필 업데이트
 exports.updateProfile = async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, currentPassword, newPassword } = req.body;
 
-    if (!name || name.trim().length === 0) {
+    if (!name && !currentPassword && !newPassword) {
       return res.status(400).json({
         success: false,
-        message: '이름을 입력해주세요.'
+        message: '수정할 이름 또는 비밀번호를 입력해주세요.'
       });
     }
 
@@ -146,7 +146,51 @@ exports.updateProfile = async (req, res) => {
       });
     }
 
-    user.name = name.trim();
+    // 이름 변경
+    if (typeof name === 'string') {
+      if (!name.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: '이름을 입력해주세요.'
+        });
+      }
+      if (name.trim().length < 2) {
+        return res.status(400).json({
+          success: false,
+          message: '이름은 2자 이상이어야 합니다.'
+        });
+      }
+      user.name = name.trim();
+    }
+
+    // 비밀번호 변경
+    if (currentPassword || newPassword) {
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({
+          success: false,
+          message: '비밀번호를 변경하려면 현재 비밀번호와 새 비밀번호를 모두 입력해야 합니다.'
+        });
+      }
+      if (newPassword.length < 6) {
+        return res.status(400).json({
+          success: false,
+          message: '새 비밀번호는 6자 이상이어야 합니다.'
+        });
+      }
+
+      const isMatch = await user.matchPassword(currentPassword);
+      if (!isMatch) {
+        return res.status(401).json({
+          success: false,
+          code: 'INVALID_CURRENT_PASSWORD',
+          message: '현재 비밀번호가 올바르지 않습니다.'
+        });
+      }
+
+      // 평문 저장 (암호화 생략)
+      user.password = newPassword;
+    }
+
     await user.save();
 
     res.json({
@@ -168,6 +212,7 @@ exports.updateProfile = async (req, res) => {
     });
   }
 };
+
 
 // 프로필 이미지 업로드
 exports.uploadProfileImage = async (req, res) => {
@@ -248,6 +293,42 @@ exports.uploadProfileImage = async (req, res) => {
       success: false,
       message: '이미지 업로드 중 오류가 발생했습니다.'
     });
+  }
+};
+
+// 프로필 이미지 url 업데이트
+exports.updateProfileImageUrl = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { profileImage } = req.body;
+
+    if (!profileImage || typeof profileImage !== 'string' || profileImage.trim() === '') {
+      return res.status(400).json({ success: false, message: '프로필 이미지 URL이 필요합니다.' });
+    }
+
+    // URL 형식 간단 체크 (http 또는 https로 시작하는지)
+    const urlPattern = /^https?:\/\/.+/i;
+    if (!urlPattern.test(profileImage)) {
+      return res.status(400).json({ success: false, message: '유효한 이미지 URL이 아닙니다.' });
+    }
+
+    // 사용자 찾고 업데이트 (new: true는 업데이트 후 문서 반환)
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: '사용자를 찾을 수 없습니다.' });
+    }
+
+    user.profileImage = profileImage;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: '프로필 이미지가 업데이트되었습니다.',
+      user,
+    });
+  } catch (err) {
+    console.error('updateProfileImageUrl error:', err);
+    res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
   }
 };
 

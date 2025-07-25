@@ -244,6 +244,12 @@ class AuthService {
       console.error('Profile update error:', error);
       
       if (error.response?.status === 401) {
+        const code = error.response.data?.code;
+
+        if (code === 'INVALID_CURRENT_PASSWORD') {
+          throw error;
+        }
+
         try {
           const refreshed = await this.refreshToken();
           if (refreshed) {

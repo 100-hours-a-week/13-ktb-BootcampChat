@@ -109,7 +109,13 @@ const Navbar = () => {
                 <Avatar.Root
                   size="md"
                   style={{ flexShrink: 0 }}
-                  src={currentUser.profileImage ? `${process.env.NEXT_PUBLIC_API_URL}${currentUser.profileImage}` : undefined}
+                  src={
+                    currentUser.profileImage
+                      ? currentUser.profileImage.startsWith('http')
+                        ? currentUser.profileImage
+                        : `${process.env.NEXT_PUBLIC_API_URL}${currentUser.profileImage}`
+                      : undefined
+                  }
                 >
                   <Avatar.Image />
                   <Avatar.Fallback>{currentUser.name?.[0]?.toUpperCase()}</Avatar.Fallback>
